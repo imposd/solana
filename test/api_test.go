@@ -75,15 +75,20 @@ func setupTest(t *testing.T) *TestSuite {
 	_, err = collection.InsertOne(ctx, apiKey)
 	require.NoError(t, err, "API key insertion should succeed")
 
+	db := &types.Database{
+		MongoDB: mongoClient,
+		Redis:   redisClient,
+	}
+
 	app := fiber.New(fiber.Config{
 		DisableStartupMessage: true,
 	})
 
 	app.Use(middleware.RateLimitMiddleware())
-	app.Use(middleware.AuthMiddleware(mongoClient))
+	app.Use(middleware.AuthMiddleware(db))
 
 	routes.InitSolanaService(solanaService)
-	routes.InitRoutes(app, mongoClient)
+	routes.InitRoutes(app, db)
 
 	return &TestSuite{
 		app:           app,

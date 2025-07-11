@@ -2,7 +2,6 @@ package middleware
 
 import (
 	"sync"
-	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"golang.org/x/time/rate"
@@ -11,26 +10,15 @@ import (
 )
 
 var (
-	rateLimiters = make(map[string]*rate.Limiter)
-	rateMutex    = &sync.RWMutex{}
+	rateLimiters sync.Map
 )
 
 func RateLimitMiddleware() fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		clientIP := c.IP()
 
-		rateMutex.RLock()
-		limiter, exists := rateLimiters[clientIP]
-		rateMutex.RUnlock()
-
-		if !exists {
-			rateMutex.Lock()
-			if limiter, exists = rateLimiters[clientIP]; !exists {
-				limiter = rate.NewLimiter(rate.Every(time.Minute/10), 10)
-				rateLimiters[clientIP] = limiter
-			}
-			rateMutex.Unlock()
-		}
+		limiterInterface, _ := rateLimiters.LoadOrStore(clientIP, rate.NewLimiter(rate.Limit(10.0/60.0), 9))
+		limiter := limiterInterface.(*rate.Limiter)
 
 		if !limiter.Allow() {
 			return c.Status(fiber.StatusTooManyRequests).JSON(types.ErrorResponse{
@@ -44,7 +32,8 @@ func RateLimitMiddleware() fiber.Handler {
 }
 
 func ClearRateLimiters() {
-	rateMutex.Lock()
-	rateLimiters = make(map[string]*rate.Limiter)
-	rateMutex.Unlock()
+	rateLimiters.Range(func(key, value interface{}) bool {
+		rateLimiters.Delete(key)
+		return true
+	})
 }

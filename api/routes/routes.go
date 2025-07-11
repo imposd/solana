@@ -2,16 +2,16 @@ package routes
 
 import (
 	"github.com/gofiber/fiber/v2"
-	"go.mongodb.org/mongo-driver/v2/mongo"
 
 	"nova/api/middleware"
+	"nova/api/types"
 )
 
-func InitRoutes(app *fiber.App, mongoClient *mongo.Client) {
+func InitRoutes(app *fiber.App, db *types.Database) {
 	api := app.Group("/api")
 
 	api.Use(middleware.RateLimitMiddleware())
-	api.Use(middleware.AuthMiddleware(mongoClient))
+	api.Use(middleware.AuthMiddleware(db))
 
 	api.Post("/get-balance", GetBalance)
 }

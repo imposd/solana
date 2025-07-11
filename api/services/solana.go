@@ -16,37 +16,22 @@ import (
 )
 
 type SolanaService struct {
-	client       *rpc.Client
-	redisClient  *redis.Client
-	cache        map[string]*types.CacheEntry
-	cacheMutex   *sync.RWMutex
-	requestMutex map[string]*sync.Mutex
-	mutexMapLock *sync.Mutex
+	client      *rpc.Client
+	redisClient *redis.Client
+	cache       sync.Map
+	lastCleanup time.Time
 }
 
 func NewSolanaService(rpcURL string, redisClient *redis.Client) *SolanaService {
 	return &SolanaService{
-		client:       rpc.New(rpcURL),
-		redisClient:  redisClient,
-		cache:        make(map[string]*types.CacheEntry),
-		cacheMutex:   &sync.RWMutex{},
-		requestMutex: make(map[string]*sync.Mutex),
-		mutexMapLock: &sync.Mutex{},
+		client:      rpc.New(rpcURL),
+		redisClient: redisClient,
+		lastCleanup: time.Now(),
 	}
 }
 
 func (s *SolanaService) GetBalance(address string) (float64, error) {
-	s.mutexMapLock.Lock()
-
-	if _, exists := s.requestMutex[address]; !exists {
-		s.requestMutex[address] = &sync.Mutex{}
-	}
-
-	mutex := s.requestMutex[address]
-	s.mutexMapLock.Unlock()
-
-	mutex.Lock()
-	defer mutex.Unlock()
+	s.cleanupIfNeeded()
 
 	if cachedBalance, valid := s.getCachedBalance(address); valid {
 		return cachedBalance, nil
@@ -64,11 +49,8 @@ func (s *SolanaService) GetBalance(address string) (float64, error) {
 }
 
 func (s *SolanaService) getCachedBalance(address string) (float64, bool) {
-	s.cacheMutex.RLock()
-
-	defer s.cacheMutex.RUnlock()
-
-	if entry, exists := s.cache[address]; exists {
+	if entryInterface, exists := s.cache.Load(address); exists {
+		entry := entryInterface.(*types.CacheEntry)
 		if time.Since(entry.Timestamp) < 10*time.Second {
 			return entry.Balance, true
 		}
@@ -78,17 +60,12 @@ func (s *SolanaService) getCachedBalance(address string) (float64, bool) {
 }
 
 func (s *SolanaService) setCachedBalance(address string, balance float64) {
-	s.cacheMutex.Lock()
-
-	defer s.cacheMutex.Unlock()
-
-	s.cache[address] = &types.CacheEntry{
+	s.cache.Store(address, &types.CacheEntry{
 		Balance:   balance,
 		Timestamp: time.Now(),
-	}
+	})
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-
 	defer cancel()
 
 	s.redisClient.Set(ctx, fmt.Sprintf("balance:%s", address), balance, 10*time.Second)
@@ -151,4 +128,20 @@ func (s *SolanaService) GetMultipleBalances(addresses []string) []types.WalletBa
 	wg.Wait()
 
 	return results
+}
+
+func (s *SolanaService) cleanupIfNeeded() {
+	if time.Since(s.lastCleanup) < 5*time.Minute {
+		return
+	}
+
+	s.lastCleanup = time.Now()
+
+	s.cache.Range(func(key, value interface{}) bool {
+		entry := value.(*types.CacheEntry)
+		if time.Since(entry.Timestamp) > 10*time.Second {
+			s.cache.Delete(key)
+		}
+		return true
+	})
 }

@@ -58,6 +58,11 @@ func setupSimpleTest(t *testing.T) (*fiber.App, string) {
 	err = redisClient.Ping(ctx).Err()
 	require.NoError(t, err)
 
+	db := &types.Database{
+		MongoDB: mongoClient,
+		Redis:   redisClient,
+	}
+
 	solanaService := services.NewSolanaService(cfg.SolaanRPCURL, redisClient)
 
 	testAPIKey := fmt.Sprintf("simple-test-key-%d", time.Now().UnixNano())
@@ -85,10 +90,10 @@ func setupSimpleTest(t *testing.T) (*fiber.App, string) {
 	})
 
 	app.Use(middleware.RateLimitMiddleware())
-	app.Use(middleware.AuthMiddleware(mongoClient))
+	app.Use(middleware.AuthMiddleware(db))
 
 	routes.InitSolanaService(solanaService)
-	routes.InitRoutes(app, mongoClient)
+	routes.InitRoutes(app, db)
 
 	return app, testAPIKey
 }

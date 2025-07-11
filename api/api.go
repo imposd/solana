@@ -37,7 +37,7 @@ func Main() {
 	app.Use(recover.New())
 	app.Use(logger.New())
 
-	routes.InitRoutes(app, db.MongoDB)
+	routes.InitRoutes(app, db)
 
 	port := os.Getenv("API_PORT")
 

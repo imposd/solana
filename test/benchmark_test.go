@@ -172,6 +172,11 @@ func setupBenchmark(b *testing.B) *TestSuite {
 		CreatedAt: time.Now(),
 	}
 
+	db := &types.Database{
+		MongoDB: mongoClient,
+		Redis:   redisClient,
+	}
+
 	_, err = collection.InsertOne(ctx, apiKey)
 	require.NoError(b, err, "API key insertion should succeed")
 
@@ -180,10 +185,10 @@ func setupBenchmark(b *testing.B) *TestSuite {
 	})
 
 	app.Use(middleware.RateLimitMiddleware())
-	app.Use(middleware.AuthMiddleware(mongoClient))
+	app.Use(middleware.AuthMiddleware(db))
 
 	routes.InitSolanaService(solanaService)
-	routes.InitRoutes(app, mongoClient)
+	routes.InitRoutes(app, db)
 
 	return &TestSuite{
 		app:           app,

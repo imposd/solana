@@ -25,8 +25,18 @@ func initMongoDB(db *types.Database, cfg *types.Config) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
+	clientOptions := options.Client().
+		ApplyURI(cfg.MongoURI).
+		SetMaxPoolSize(100).
+		SetMinPoolSize(10).
+		SetMaxConnIdleTime(30 * time.Second).
+		SetMaxConnecting(20).
+		SetConnectTimeout(5 * time.Second).
+		SetServerSelectionTimeout(5 * time.Second).
+		SetHeartbeatInterval(10 * time.Second)
+
 	var err error
-	db.MongoDB, err = mongo.Connect(options.Client().ApplyURI(cfg.MongoURI))
+	db.MongoDB, err = mongo.Connect(clientOptions)
 	if err != nil {
 		log.Fatal("Error connecting to MongoDB:", err)
 		return
