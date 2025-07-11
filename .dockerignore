@@ -1,0 +1,49 @@
+# Ignore git files
+.git
+.gitignore
+
+# Ignore documentation
+README.md
+*.md
+
+# Ignore test files
+test/
+*_test.go
+
+# Ignore development files
+.env
+.env.local
+.env.development
+
+# Ignore build artifacts
+build/
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Ignore IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Ignore OS files
+.DS_Store
+Thumbs.db
+
+# Ignore node modules (if any)
+node_modules/
+
+# Ignore temporary files
+*.tmp
+*.temp
+*.log
+
+# Ignore coverage files
+coverage.out
+coverage.html
+
+# Ignore profiling files
+*.prof
+*.pprof

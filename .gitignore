@@ -1,0 +1,30 @@
+# Binaries for programs
+*.exe
+*.dll
+*.so
+*.dylib
+*.rpm
+*.deb
+
+# Compiled binaries and packages
+*.test
+*.prof
+
+# Go module cache
+/pkg/
+/bin/
+
+# Dependency directories (if not using Go Modules, or for specific cases)
+# vendor/
+
+# Logs
+*.log
+
+# Editor/IDE specific files
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+.env
+nova
